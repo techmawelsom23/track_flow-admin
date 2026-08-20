@@ -118,19 +118,28 @@ async function seedAdmin() {
     return;
   }
 
-  const existing = await pool.query('SELECT id, role FROM users WHERE email=$1', [email]);
+  const existing = await pool.query('SELECT id, role, password FROM users WHERE email=$1', [email]);
+  const hash = await bcrypt.hash(password, 10);
 
   if (existing.rows.length === 0) {
-    const hash = await bcrypt.hash(password, 10);
     await pool.query(
       'INSERT INTO users (email, password, name, role) VALUES ($1,$2,$3,$4)',
       [email, hash, 'Admin', 'admin']
     );
     console.log(`[seedAdmin] Created admin account for ${email}`);
-  } else if (existing.rows[0].role !== 'admin') {
-    await pool.query('UPDATE users SET role=$1 WHERE email=$2', ['admin', email]);
-    console.log(`[seedAdmin] Promoted existing account ${email} to admin`);
+    return;
+  }
+
+  // ADMIN_PASSWORD in env is the source of truth for this account — keep the
+  // stored hash in sync every boot, so changing the env var and redeploying
+  // is always enough to change the admin password (no manual DB step needed).
+  const passwordMatches = await bcrypt.compare(password, existing.rows[0].password);
+  const needsRoleFix = existing.rows[0].role !== 'admin';
+
+  if (!passwordMatches || needsRoleFix) {
+    await pool.query('UPDATE users SET password=$1, role=$2 WHERE email=$3', [hash, 'admin', email]);
+    console.log(`[seedAdmin] Synced admin account for ${email} (${!passwordMatches ? 'password updated' : ''}${!passwordMatches && needsRoleFix ? ', ' : ''}${needsRoleFix ? 'promoted to admin' : ''})`);
   } else {
-    console.log(`[seedAdmin] Admin account already present for ${email}`);
+    console.log(`[seedAdmin] Admin account already present and in sync for ${email}`);
   }
 }
