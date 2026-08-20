@@ -9,16 +9,58 @@ import { sendPaymentOtpEmail } from '../services/email.js';
 const router = express.Router();
 const OTP_TTL_MINUTES = 10;
 
-async function getBtcPrice() {
-  try {
-    const { data } = await axios.get(
-      process.env.BTC_PRICE_API || 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
-      { timeout: 8000 }
-    );
-    return data.bitcoin.usd;
-  } catch {
-    return null;
+// Try multiple independent price sources in order, so one provider being
+// down, rate-limited, or blocked doesn't take down the whole payment flow.
+// If BTC_PRICE_API is set, it's tried first (assumed CoinGecko-shaped response).
+const PRICE_PROVIDERS = [
+  ...(process.env.BTC_PRICE_API ? [{
+    name: 'custom (BTC_PRICE_API)',
+    url: process.env.BTC_PRICE_API,
+    extract: (data) => Number(data?.bitcoin?.usd)
+  }] : []),
+  {
+    name: 'coingecko',
+    url: 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
+    extract: (data) => Number(data?.bitcoin?.usd)
+  },
+  {
+    name: 'coinbase',
+    url: 'https://api.coinbase.com/v2/prices/BTC-USD/spot',
+    extract: (data) => Number(data?.data?.amount)
+  },
+  {
+    name: 'binance',
+    url: 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',
+    extract: (data) => Number(data?.price)
   }
+];
+
+let priceCache = { value: null, at: 0 };
+const CACHE_TTL_MS = 60 * 1000; // don't re-hit providers more than once a minute
+
+async function getBtcPrice() {
+  if (priceCache.value && Date.now() - priceCache.at < CACHE_TTL_MS) {
+    return priceCache.value;
+  }
+  for (const provider of PRICE_PROVIDERS) {
+    try {
+      const { data } = await axios.get(provider.url, { timeout: 10000 });
+      const price = provider.extract(data);
+      if (price && !isNaN(price) && price > 0) {
+        priceCache = { value: price, at: Date.now() };
+        return price;
+      }
+      console.error(`[btcPrice] ${provider.name} returned an unusable value:`, JSON.stringify(data).slice(0, 200));
+    } catch (e) {
+      console.error(`[btcPrice] ${provider.name} failed:`, e.response?.status ? `HTTP ${e.response.status}` : e.message);
+    }
+  }
+  // All providers failed — serve a stale cached price rather than blocking payment entirely, if we have one
+  if (priceCache.value) {
+    console.warn('[btcPrice] All providers failed, serving stale cached price from', new Date(priceCache.at).toISOString());
+    return priceCache.value;
+  }
+  return null;
 }
 
 function generateOtp() {
