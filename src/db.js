@@ -15,6 +15,13 @@ export const pool = new Pool({
 // Creates all tables (idempotent) and seeds the admin account from env vars.
 // Call once at server startup instead of lazily inside each route.
 export async function initDb() {
+  if (process.env.RESET_DB === 'true') {
+    console.warn('[initDb] RESET_DB=true — dropping existing tables before recreating them.');
+    await pool.query(`
+      DROP TABLE IF EXISTS payment_otps, payment_proofs, tracking_events, shipments, inquiries, users CASCADE
+    `);
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
