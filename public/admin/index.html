@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrackFlow Admin — Operations Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0D1626;
+    --ink-soft:#18233A;
+    --panel:#141F35;
+    --panel-2:#1B2A44;
+    --paper:#F6F4EE;
+    --brass:#C79A47;
+    --brass-dark:#8F6A1F;
+    --slate:#8C99B5;
+    --line:#2A3A57;
+    --rust:#E0705A;
+    --forest:#4FBE8E;
+    --text:#EAEEF7;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.5;}
+  h1,h2,h3{font-family:'Space Grotesk',system-ui,sans-serif;letter-spacing:-0.01em;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px;}
+  nav.top{position:sticky;top:0;z-index:40;background:#0A1120;border-bottom:1px solid var(--line);}
+  nav.top .wrap{display:flex;align-items:center;justify-content:space-between;height:64px;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;font-family:'Space Grotesk';}
+  .brand-mark{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--brass),#E0B45C);display:flex;align-items:center;justify-content:center;color:#161009;font-weight:700;font-size:12.5px;}
+  .brand small{color:var(--slate);font-weight:500;font-size:11.5px;font-family:'IBM Plex Mono';margin-left:8px;text-transform:uppercase;letter-spacing:0.06em;}
+  .nav-btn{background:transparent;border:1px solid var(--line);color:var(--slate);padding:7px 13px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .nav-btn:hover{color:var(--text);border-color:var(--brass);}
+  section.block{padding:40px 0;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:26px;}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--slate);margin:14px 0 6px;}
+  label:first-child{margin-top:0;}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-family:'Inter';font-size:14px;background:var(--panel-2);color:var(--text);}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--brass);outline-offset:1px;}
+  textarea{resize:vertical;min-height:64px;}
+  .btn{border:none;border-radius:9px;padding:10px 18px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:'Inter';}
+  .btn-brass{background:var(--brass);color:#1A1305;}
+  .btn-brass:hover{background:#D8AC5A;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text);}
+  .btn-ghost:hover{border-color:var(--brass);}
+  .btn-danger{background:transparent;border:1px solid #5A3230;color:var(--rust);}
+  .btn-danger:hover{background:rgba(224,112,90,0.12);}
+  .btn-sm{padding:7px 13px;font-size:12.5px;}
+  .err{background:rgba(224,112,90,0.12);border:1px solid #5A3230;color:var(--rust);padding:10px 13px;border-radius:8px;font-size:13.5px;margin-top:14px;}
+  .ok{background:rgba(79,190,142,0.12);border:1px solid #2E6B4F;color:var(--forest);padding:10px 13px;border-radius:8px;font-size:13.5px;margin-top:14px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:30px;}
+  @media(max-width:860px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+  .stat-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;}
+  .stat-card .n{font-family:'Space Grotesk';font-size:26px;font-weight:700;}
+  .stat-card .l{color:var(--slate);font-size:12.5px;margin-top:4px;}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:22px;}
+  .tab{padding:11px 16px;font-weight:600;font-size:14px;color:var(--slate);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--text);border-color:var(--brass);}
+  .card{border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:12px;background:var(--panel);}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .status-pill{font-family:'IBM Plex Mono';font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:0.03em;white-space:nowrap;}
+  .st-pending{background:#3D330F;color:#F0C550;}
+  .st-quoted{background:#123A5C;color:#7EC1F5;}
+  .st-converted,.st-code_generated,.st-picked,.st-in_transit,.st-customs,.st-out_for_delivery{background:var(--panel-2);color:#B9C4DC;}
+  .st-delivered{background:#123A2C;color:var(--forest);}
+  .st-declined{background:#3A1E1B;color:var(--rust);}
+  .pay-unpaid{color:var(--rust);}
+  .pay-pending_confirmation{color:#F0C550;}
+  .pay-paid{color:var(--forest);}
+  .route{font-family:'IBM Plex Mono';font-size:13px;color:#B9C4DC;margin-top:6px;}
+  .muted{color:var(--slate);font-size:13px;}
+  .empty{text-align:center;padding:36px 20px;color:var(--slate);}
+  .empty .glyph{font-size:26px;margin-bottom:10px;}
+  .actions{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap;}
+  .modal-bg{position:fixed;inset:0;background:rgba(5,9,18,0.7);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal-bg.show{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:440px;width:100%;padding:26px;max-height:88vh;overflow-y:auto;}
+  .modal h3{margin:0 0 14px;font-size:18px;}
+  .modal .close{float:right;cursor:pointer;background:none;border:none;font-size:20px;color:var(--slate);}
+  .login-wrap{min-height:calc(100vh - 65px);display:flex;align-items:center;justify-content:center;}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.25);border-top-color:#1A1305;border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:-2px;margin-right:6px;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .hidden{display:none !important;}
+  table.wh{width:100%;border-collapse:collapse;font-size:13px;}
+  table.wh th{text-align:left;color:var(--slate);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;}
+  table.wh td{padding:9px 10px;border-bottom:1px solid var(--line);}
+  table.wh tr:last-child td{border-bottom:none;}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <div class="brand"><span class="brand-mark">TF</span> TrackFlow <small>Admin</small></div>
+    <div id="navLinks"></div>
+  </div>
+</nav>
+
+<div id="app"></div>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
+
+<script>
+const API = '/api/v1';
+const state = {
+  token: localStorage.getItem('tf_admin_token') || null,
+  user: JSON.parse(localStorage.getItem('tf_admin_user') || 'null'),
+  view: 'login',
+  tab: 'inquiries',
+  stats: null,
+  inquiries: [],
+  shipments: [],
+  warehouses: [],
+};
+
+function saveAuth(token, user){
+  state.token = token; state.user = user;
+  localStorage.setItem('tf_admin_token', token);
+  localStorage.setItem('tf_admin_user', JSON.stringify(user));
+}
+function clearAuth(){
+  state.token = null; state.user = null;
+  localStorage.removeItem('tf_admin_token');
+  localStorage.removeItem('tf_admin_user');
+}
+
+async function api(path, opts={}){
+  const headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
+  if(state.token) headers['Authorization'] = 'Bearer ' + state.token;
+  const res = await fetch(API + path, Object.assign({}, opts, {headers}));
+  let data = null;
+  try{ data = await res.json(); }catch(e){}
+  if(!res.ok){
+    const err = new Error((data && data.error) || 'Request failed (' + res.status + ')');
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function fmtDate(d){
+  try{ return new Date(d).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return d; }
+}
+function statusLabel(s){ return (s||'').replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase()); }
+
+function renderNav(){
+  const nav = document.getElementById('navLinks');
+  nav.innerHTML = (state.token && state.user)
+    ? `<button class="nav-btn" onclick="logout()">Sign out (${state.user.email})</button>`
+    : '';
+}
+
+window.go = function(view){ state.view = view; render(); };
+window.logout = function(){ clearAuth(); go('login'); };
+
+async function render(){
+  renderNav();
+  const app = document.getElementById('app');
+  if(!state.token || state.view==='login'){ app.innerHTML = loginView(); bindLogin(); return; }
+  app.innerHTML = `<div class="wrap block"><p class="muted">Loading console…</p></div>`;
+  await Promise.all([loadStats(), loadInquiries(), loadShipments(), loadWarehouses()]);
+  app.innerHTML = consoleView();
+}
+
+function loginView(){
+  return `
+  <div class="login-wrap">
+    <div class="panel" style="max-width:380px;width:100%;">
+      <div style="text-align:center;margin-bottom:22px;">
+        <div class="brand-mark" style="margin:0 auto 12px;width:40px;height:40px;font-size:16px;">TF</div>
+        <h2 style="margin:0;font-size:20px;">Admin sign in</h2>
+        <p class="muted" style="margin-top:6px;">Operations console — authorized staff only</p>
+      </div>
+      <form id="loginForm">
+        <label>Email</label><input name="email" type="email" required autocomplete="username">
+        <label>Password</label><input name="password" type="password" required autocomplete="current-password">
+        <button class="btn btn-brass" type="submit" style="width:100%;margin-top:20px;">Sign in</button>
+      </form>
+      <div id="loginMsg"></div>
+    </div>
+  </div>`;
+}
+function bindLogin(){
+  const f = document.getElementById('loginForm');
+  f.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(f);
+    const msg = document.getElementById('loginMsg');
+    msg.innerHTML = '';
+    const btn = f.querySelector('button');
+    btn.innerHTML = '<span class="spin"></span>Signing in…'; btn.disabled = true;
+    try{
+      const data = await api('/auth/login', {method:'POST', body: JSON.stringify({email: fd.get('email'), password: fd.get('password')})});
+      if(data.user.role !== 'admin'){
+        msg.innerHTML = '<div class="err">This account does not have admin access.</div>';
+        btn.innerHTML = 'Sign in'; btn.disabled = false;
+        return;
+      }
+      saveAuth(data.token, data.user);
+      go('console');
+    }catch(err){
+      msg.innerHTML = `<div class="err">${err.message}</div>`;
+      btn.innerHTML = 'Sign in'; btn.disabled = false;
+    }
+  });
+}
+
+async function loadStats(){ try{ state.stats = await api('/admin/stats'); }catch(e){ if(e.status===401){clearAuth(); state.view='login';} } }
+async function loadInquiries(){ try{ state.inquiries = await api('/inquiries'); }catch(e){} }
+async function loadShipments(){ try{ state.shipments = await api('/shipments'); }catch(e){} }
+async function loadWarehouses(){ if(!state.warehouses.length) try{ state.warehouses = await api('/admin/warehouses'); }catch(e){} }
+
+function consoleView(){
+  const s = state.stats || {totalInquiries:0,pendingInquiries:0,totalShipments:0,totalPaidUSD:0};
+  return `
+  <section class="block">
+    <div class="wrap">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="n">${s.totalInquiries}</div><div class="l">Total inquiries</div></div>
+        <div class="stat-card"><div class="n">${s.pendingInquiries}</div><div class="l">Pending review</div></div>
+        <div class="stat-card"><div class="n">${s.totalShipments}</div><div class="l">Shipments created</div></div>
+        <div class="stat-card"><div class="n">$${Number(s.totalPaidUSD).toLocaleString()}</div><div class="l">Confirmed revenue (BTC)</div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab ${state.tab==='inquiries'?'active':''}" onclick="setTab('inquiries')">Inquiries (${state.inquiries.length})</div>
+        <div class="tab ${state.tab==='shipments'?'active':''}" onclick="setTab('shipments')">Shipments (${state.shipments.length})</div>
+        <div class="tab ${state.tab==='warehouses'?'active':''}" onclick="setTab('warehouses')">World hubs (${state.warehouses.length})</div>
+      </div>
+      <div id="tabContent">${tabContent()}</div>
+    </div>
+  </section>`;
+}
+
+function tabContent(){
+  if(state.tab==='inquiries') return inquiriesHtml();
+  if(state.tab==='shipments') return shipmentsHtml();
+  if(state.tab==='warehouses') return warehousesHtml();
+}
+window.setTab = function(t){ state.tab = t; document.getElementById('tabContent').innerHTML = tabContent(); };
+
+function inquiriesHtml(){
+  if(!state.inquiries.length) return `<div class="panel empty"><div class="glyph">📋</div>No inquiries yet.</div>`;
+  return state.inquiries.map(i => `
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <div style="font-weight:700;">${i.cargo_description}</div>
+          <div class="route">${i.origin_city || i.origin_country} → ${i.destination_city || i.destination_country}${i.weight_kg?` · ${i.weight_kg}kg`:''}</div>
+          <div class="muted" style="margin-top:6px;">${i.customer_name} · ${i.customer_email}${i.customer_phone?` · ${i.customer_phone}`:''}</div>
+        </div>
+        <span class="status-pill st-${i.status}">${statusLabel(i.status)}</span>
+      </div>
+      ${i.status==='quoted' ? `<div class="muted" style="margin-top:10px;">Quoted at <b style="color:var(--text);">$${Number(i.quote_cost_usd).toLocaleString()}</b>${i.quote_note?` — ${i.quote_note}`:''}</div>` : ''}
+      <div class="muted" style="margin-top:8px;font-size:11.5px;">Submitted ${fmtDate(i.created_at)}</div>
+      ${i.status==='pending' ? `
+        <div class="actions">
+          <button class="btn btn-brass btn-sm" onclick="openQuote(${i.id})">Quote</button>
+          <button class="btn btn-danger btn-sm" onclick="declineInquiry(${i.id})">Decline</button>
+        </div>` : ''}
+      ${i.status==='quoted' ? `
+        <div class="actions">
+          <button class="btn btn-brass btn-sm" onclick="convertToShipment(${i.id})">Create shipment</button>
+        </div>` : ''}
+    </div>`).join('');
+}
+
+function shipmentsHtml(){
+  if(!state.shipments.length) return `<div class="panel empty"><div class="glyph">📦</div>No shipments yet.</div>`;
+  return state.shipments.map(s => `
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <div class="mono" style="font-weight:700;">${s.tracking_code}</div>
+          <div class="route">${s.origin_country} → ${s.destination_country}</div>
+          <div class="muted" style="margin-top:6px;">${s.customer_name} · ${s.customer_email}</div>
+        </div>
+        <span class="status-pill st-${s.status}">${statusLabel(s.status)}</span>
+      </div>
+      <div class="muted" style="margin-top:8px;">$${Number(s.cost_usd).toLocaleString()} · <span class="pay-${s.payment_status}">${statusLabel(s.payment_status)}</span> · currently at <b style="color:var(--text);">${s.current_location||'—'}</b></div>
+      <div class="actions">
+        <button class="btn btn-ghost btn-sm" onclick="openLocationUpdate('${s.tracking_code}')">Update location / status</button>
+        ${s.payment_status==='pending_confirmation' ? `<button class="btn btn-brass btn-sm" onclick="openVerifyOtp(${s.id},'${s.tracking_code}')">Verify payment (OTP)</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function warehousesHtml(){
+  return `<div class="panel" style="overflow-x:auto;">
+    <table class="wh">
+      <thead><tr><th>Code</th><th>Hub</th><th>City</th><th>Country</th></tr></thead>
+      <tbody>${state.warehouses.map(w=>`<tr><td class="mono">${w.code}</td><td>${w.warehouse}</td><td>${w.city}</td><td>${w.country}</td></tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+// ---- Inquiry actions ----
+window.openQuote = function(id){
+  showModal(`
+    <button class="close" onclick="closeModal()">&times;</button>
+    <h3>Quote inquiry #${id}</h3>
+    <form id="quoteForm">
+      <label>Quote cost (USD)</label>
+      <input name="quote_cost_usd" type="number" min="1" step="0.01" required>
+      <label>Note <span class="muted" style="font-weight:400;">(optional, shown to customer)</span></label>
+      <textarea name="quote_note" placeholder="e.g. Air freight, 5–7 business days"></textarea>
+      <button class="btn btn-brass" type="submit" style="width:100%;margin-top:18px;">Send quote</button>
+    </form>
+    <div id="quoteMsg"></div>
+  `);
+  document.getElementById('quoteForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const msg = document.getElementById('quoteMsg');
+    try{
+      await api(`/inquiries/${id}/quote`, {method:'PATCH', body: JSON.stringify({
+        quote_cost_usd: fd.get('quote_cost_usd'), quote_note: fd.get('quote_note') || null
+      })});
+      await loadInquiries();
+      msg.innerHTML = '<div class="ok">Quote sent.</div>';
+      setTimeout(()=>{ closeModal(); setTab('inquiries'); }, 700);
+    }catch(err){ msg.innerHTML = `<div class="err">${err.message}</div>`; }
+  });
+};
+
+window.declineInquiry = async function(id){
+  if(!confirm('Decline this inquiry?')) return;
+  try{ await api(`/inquiries/${id}/decline`, {method:'PATCH'}); await loadInquiries(); setTab('inquiries'); }
+  catch(e){ alert(e.message); }
+};
+
+window.convertToShipment = async function(inquiryId){
+  try{
+    const s = await api('/shipments/from-inquiry', {method:'POST', body: JSON.stringify({inquiry_id: inquiryId})});
+    await Promise.all([loadInquiries(), loadShipments()]);
+    alert('Shipment created: ' + s.tracking_code);
+    setTab('shipments');
+  }catch(e){ alert(e.message); }
+};
+
+// ---- Shipment actions ----
+window.openLocationUpdate = function(trackingCode){
+  showModal(`
+    <button class="close" onclick="closeModal()">&times;</button>
+    <h3>Update ${trackingCode}</h3>
+    <form id="locForm">
+      <label>Warehouse / hub</label>
+      <select name="hub">
+        <option value="">— Custom location —</option>
+        ${state.warehouses.map(w=>`<option value="${w.code}" data-w="${w.warehouse}" data-c="${w.city}" data-co="${w.country}">${w.city}, ${w.country} — ${w.warehouse}</option>`).join('')}
+      </select>
+      <label>City <span class="muted" style="font-weight:400;">(if custom)</span></label>
+      <input name="city">
+      <label>Country <span class="muted" style="font-weight:400;">(if custom)</span></label>
+      <input name="country">
+      <label>Status</label>
+      <select name="status" required>
+        <option value="picked">Picked up</option>
+        <option value="in_transit">In transit</option>
+        <option value="customs">In customs</option>
+        <option value="out_for_delivery">Out for delivery</option>
+        <option value="delivered">Delivered</option>
+      </select>
+      <button class="btn btn-brass" type="submit" style="width:100%;margin-top:18px;">Save update</button>
+    </form>
+    <div id="locMsg"></div>
+  `);
+  const form = document.getElementById('locForm');
+  const hubSel = form.querySelector('[name=hub]');
+  hubSel.addEventListener('change', ()=>{
+    const opt = hubSel.selectedOptions[0];
+    if(opt && opt.value){
+      form.querySelector('[name=city]').value = opt.dataset.c;
+      form.querySelector('[name=country]').value = opt.dataset.co;
+    }
+  });
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(form);
+    const opt = hubSel.selectedOptions[0];
+    const msg = document.getElementById('locMsg');
+    try{
+      await api('/shipments/update-location', {method:'POST', body: JSON.stringify({
+        tracking_code: trackingCode,
+        warehouse_name: opt && opt.dataset.w ? opt.dataset.w : null,
+        city: fd.get('city') || null,
+        country: fd.get('country') || null,
+        status: fd.get('status')
+      })});
+      await loadShipments();
+      msg.innerHTML = '<div class="ok">Shipment updated.</div>';
+      setTimeout(()=>{ closeModal(); setTab('shipments'); }, 700);
+    }catch(err){ msg.innerHTML = `<div class="err">${err.message}</div>`; }
+  });
+};
+
+window.openVerifyOtp = function(shipmentId, trackingCode){
+  showModal(`
+    <button class="close" onclick="closeModal()">&times;</button>
+    <h3>Verify payment — ${trackingCode}</h3>
+    <p class="muted" style="margin-top:0;">A 6-digit code was emailed to the admin inbox when the customer submitted this payment. Check the wallet on-chain, then enter the code below.</p>
+    <form id="otpForm">
+      <label>Verification code</label>
+      <input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" style="letter-spacing:4px;font-family:'IBM Plex Mono';font-size:18px;text-align:center;" required autofocus>
+      <button class="btn btn-brass" type="submit" style="width:100%;margin-top:18px;">Confirm payment</button>
+    </form>
+    <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:10px;" onclick="resendOtp(${shipmentId})">Resend code</button>
+    <div id="otpMsg"></div>
+  `);
+  document.getElementById('otpForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const otp = new FormData(e.target).get('otp');
+    const msg = document.getElementById('otpMsg');
+    try{
+      await api('/payments/bitcoin/verify-otp', {method:'POST', body: JSON.stringify({shipmentId, otp})});
+      await loadShipments();
+      msg.innerHTML = '<div class="ok">Payment confirmed.</div>';
+      setTimeout(()=>{ closeModal(); setTab('shipments'); }, 700);
+    }catch(err){ msg.innerHTML = `<div class="err">${err.message}</div>`; }
+  });
+};
+
+window.resendOtp = async function(shipmentId){
+  const msg = document.getElementById('otpMsg');
+  try{
+    const r = await api('/payments/bitcoin/resend-otp', {method:'POST', body: JSON.stringify({shipmentId})});
+    msg.innerHTML = `<div class="ok">${r.message}</div>`;
+  }catch(e){ msg.innerHTML = `<div class="err">${e.message}</div>`; }
+};
+
+function showModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalBg').classList.add('show');
+}
+window.closeModal = function(){ document.getElementById('modalBg').classList.remove('show'); };
+document.getElementById('modalBg').addEventListener('click', (e)=>{ if(e.target.id==='modalBg') closeModal(); });
+
+if(state.token && state.user) state.view = 'console';
+render();
+</script>
+</body>
+</html>

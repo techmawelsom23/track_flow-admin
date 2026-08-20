@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrackFlow — Global Freight Forwarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10192B;
+    --ink-soft:#1B2A44;
+    --paper:#F6F4EE;
+    --panel:#FFFFFF;
+    --brass:#B8862E;
+    --brass-dark:#8F6A1F;
+    --slate:#5C6B82;
+    --line:#E3DFD3;
+    --rust:#A8432B;
+    --forest:#1F6E4F;
+    --text:#161F30;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.5;}
+  h1,h2,h3,.display{font-family:'Space Grotesk',system-ui,sans-serif;letter-spacing:-0.01em;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  a{color:inherit;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;}
+  nav.top{position:sticky;top:0;z-index:40;background:var(--ink);color:#fff;}
+  nav.top .wrap{display:flex;align-items:center;justify-content:space-between;height:68px;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px;font-family:'Space Grotesk';}
+  .brand-mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--brass),#E0B45C);display:flex;align-items:center;justify-content:center;color:var(--ink);font-weight:700;font-size:14px;}
+  .nav-links{display:flex;gap:6px;align-items:center;}
+  .nav-btn{background:transparent;border:1px solid transparent;color:#D7DEEA;padding:8px 14px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .nav-btn:hover{background:rgba(255,255,255,0.08);color:#fff;}
+  .nav-btn.active{background:rgba(184,134,46,0.18);color:var(--brass);}
+  .nav-btn.primary{background:var(--brass);color:var(--ink);}
+  .nav-btn.primary:hover{background:#C79A47;}
+  .hero{background:var(--ink);color:#fff;padding:64px 0 84px;position:relative;overflow:hidden;}
+  .hero:after{content:"";position:absolute;inset:0;background:
+    radial-gradient(600px 300px at 85% -10%, rgba(184,134,46,0.25), transparent 60%);}
+  .hero .wrap{position:relative;}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:'IBM Plex Mono';font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--brass);background:rgba(184,134,46,0.12);border:1px solid rgba(184,134,46,0.35);padding:6px 12px;border-radius:99px;margin-bottom:22px;}
+  .hero h1{font-size:44px;line-height:1.08;margin:0 0 18px;max-width:640px;}
+  .hero p{color:#B9C2D4;font-size:17px;max-width:520px;margin:0 0 30px;}
+  .hero-cta{display:flex;gap:12px;flex-wrap:wrap;}
+  .btn{border:none;border-radius:10px;padding:13px 22px;font-weight:700;font-size:14.5px;cursor:pointer;font-family:'Inter';}
+  .btn-brass{background:var(--brass);color:var(--ink);}
+  .btn-brass:hover{background:#C79A47;}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.3);color:#fff;}
+  .btn-ghost:hover{border-color:#fff;}
+  .hub-strip{margin-top:46px;display:flex;flex-wrap:wrap;gap:8px;}
+  .hub-chip{font-family:'IBM Plex Mono';font-size:12px;color:#9FAAC0;border:1px solid rgba(255,255,255,0.14);padding:5px 10px;border-radius:7px;}
+  section.block{padding:56px 0;}
+  .section-head{margin-bottom:28px;}
+  .section-head .tag{font-family:'IBM Plex Mono';font-size:11.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--brass-dark);margin-bottom:8px;display:block;}
+  .section-head h2{font-size:26px;margin:0;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:28px;}
+  .grid-2{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;}
+  @media(max-width:860px){.grid-2{grid-template-columns:1fr;} .hero h1{font-size:32px;}}
+  label{display:block;font-size:13px;font-weight:600;color:var(--slate);margin:14px 0 6px;}
+  label:first-child{margin-top:0;}
+  input,select,textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;font-family:'Inter';font-size:14.5px;background:#fff;color:var(--text);}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--brass);outline-offset:1px;border-color:var(--brass);}
+  textarea{resize:vertical;min-height:70px;}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .hint{font-size:12.5px;color:var(--slate);margin-top:6px;}
+  .err{background:#FCEEEA;border:1px solid #EAC0B4;color:var(--rust);padding:10px 13px;border-radius:8px;font-size:13.5px;margin-top:14px;}
+  .ok{background:#EAF5EF;border:1px solid #B9DFCB;color:var(--forest);padding:10px 13px;border-radius:8px;font-size:13.5px;margin-top:14px;}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:22px;}
+  .tab{padding:11px 16px;font-weight:600;font-size:14px;color:var(--slate);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--ink);border-color:var(--brass);}
+  .card{border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:12px;background:#fff;}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .status-pill{font-family:'IBM Plex Mono';font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:0.03em;white-space:nowrap;}
+  .st-pending{background:#FFF3D6;color:#8A6100;}
+  .st-quoted{background:#DCEBFF;color:#1D4E8F;}
+  .st-converted,.st-code_generated,.st-picked,.st-in_transit,.st-customs,.st-out_for_delivery{background:#E7ECF6;color:var(--ink-soft);}
+  .st-delivered{background:#DDF0E5;color:var(--forest);}
+  .st-declined{background:#FBE4DC;color:var(--rust);}
+  .pay-unpaid{color:var(--rust);}
+  .pay-pending_confirmation{color:#8A6100;}
+  .pay-paid{color:var(--forest);}
+  .route{font-family:'IBM Plex Mono';font-size:13.5px;color:var(--ink-soft);margin-top:6px;}
+  .muted{color:var(--slate);font-size:13px;}
+  .empty{text-align:center;padding:36px 20px;color:var(--slate);}
+  .empty .glyph{font-size:26px;margin-bottom:10px;}
+  .timeline{margin-top:18px;border-left:2px dashed var(--line);padding-left:20px;}
+  .tl-item{position:relative;padding-bottom:20px;}
+  .tl-item:before{content:"";position:absolute;left:-26px;top:2px;width:11px;height:11px;border-radius:50%;background:var(--brass);border:2px solid #fff;box-shadow:0 0 0 2px var(--brass);}
+  .tl-item .tl-status{font-weight:700;font-size:14px;}
+  .tl-item .tl-loc{font-family:'IBM Plex Mono';font-size:12.5px;color:var(--slate);margin-top:2px;}
+  .tl-item .tl-time{font-size:11.5px;color:#9AA5B8;margin-top:2px;}
+  .modal-bg{position:fixed;inset:0;background:rgba(16,25,43,0.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal-bg.show{display:flex;}
+  .modal{background:#fff;border-radius:16px;max-width:440px;width:100%;padding:26px;max-height:88vh;overflow-y:auto;}
+  .modal h3{margin:0 0 6px;font-size:19px;}
+  .modal .close{float:right;cursor:pointer;background:none;border:none;font-size:20px;color:var(--slate);}
+  .qr-wrap{text-align:center;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0;}
+  .qr-wrap img{width:180px;height:180px;}
+  .addr-box{font-family:'IBM Plex Mono';font-size:12.5px;background:var(--paper);border:1px solid var(--line);padding:10px 12px;border-radius:8px;word-break:break-all;margin-top:8px;}
+  .kv{display:flex;justify-content:space-between;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line);}
+  .kv:last-child{border:none;}
+  .kv b{font-family:'IBM Plex Mono';}
+  footer{border-top:1px solid var(--line);padding:28px 0;text-align:center;color:var(--slate);font-size:13px;}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:-2px;margin-right:6px;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <div class="brand"><span class="brand-mark">TF</span> TrackFlow</div>
+    <div class="nav-links" id="navLinks"></div>
+  </div>
+</nav>
+
+<div id="app"></div>
+
+<footer>
+  <div class="wrap">TrackFlow · Global freight forwarding across 26 hubs, 20 countries · Settlement in Bitcoin</div>
+</footer>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
+
+<script>
+const API = '/api/v1';
+const state = {
+  token: localStorage.getItem('tf_customer_token') || null,
+  user: JSON.parse(localStorage.getItem('tf_customer_user') || 'null'),
+  view: 'home',
+  dashTab: 'quote',
+  warehouses: [],
+  inquiries: [],
+  shipments: [],
+  trackResult: null,
+  trackError: null,
+};
+
+function saveAuth(token, user){
+  state.token = token; state.user = user;
+  localStorage.setItem('tf_customer_token', token);
+  localStorage.setItem('tf_customer_user', JSON.stringify(user));
+}
+function clearAuth(){
+  state.token = null; state.user = null;
+  localStorage.removeItem('tf_customer_token');
+  localStorage.removeItem('tf_customer_user');
+}
+
+async function api(path, opts={}){
+  const headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
+  if(state.token) headers['Authorization'] = 'Bearer ' + state.token;
+  const res = await fetch(API + path, Object.assign({}, opts, {headers}));
+  let data = null;
+  try{ data = await res.json(); }catch(e){}
+  if(!res.ok){
+    const err = new Error((data && data.error) || 'Request failed (' + res.status + ')');
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function fmtDate(d){
+  try{ return new Date(d).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return d; }
+}
+function statusLabel(s){ return (s||'').replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase()); }
+
+async function loadWarehouses(){
+  if(state.warehouses.length) return;
+  try{ state.warehouses = await api('/admin/warehouses'); }catch(e){ state.warehouses = []; }
+}
+
+function hubOptions(){
+  return state.warehouses.map(w =>
+    `<option value="${w.code}" data-city="${w.city}" data-country="${w.country}">${w.city}, ${w.country} — ${w.warehouse}</option>`
+  ).join('');
+}
+
+function renderNav(){
+  const nav = document.getElementById('navLinks');
+  if(state.token && state.user){
+    nav.innerHTML = `
+      <button class="nav-btn ${state.view==='dashboard'?'active':''}" onclick="go('dashboard')">Dashboard</button>
+      <button class="nav-btn ${state.view==='track'?'active':''}" onclick="go('track')">Track</button>
+      <button class="nav-btn" onclick="logout()">Sign out</button>
+    `;
+  } else {
+    nav.innerHTML = `
+      <button class="nav-btn ${state.view==='track'?'active':''}" onclick="go('track')">Track a shipment</button>
+      <button class="nav-btn ${state.view==='login'?'active':''}" onclick="go('login')">Sign in</button>
+      <button class="nav-btn primary" onclick="go('register')">Get a quote</button>
+    `;
+  }
+}
+
+window.go = function(view){
+  state.view = view;
+  if(view==='dashboard' && !state.token) view = state.view = 'login';
+  render();
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+window.logout = function(){ clearAuth(); go('home'); };
+
+async function render(){
+  renderNav();
+  const app = document.getElementById('app');
+  if(state.view==='home') app.innerHTML = homeView();
+  else if(state.view==='login') app.innerHTML = authView('login');
+  else if(state.view==='register') app.innerHTML = authView('register');
+  else if(state.view==='track') app.innerHTML = trackView();
+  else if(state.view==='dashboard'){
+    app.innerHTML = `<div class="wrap block"><div class="panel"><p class="muted">Loading your dashboard…</p></div></div>`;
+    await loadWarehouses();
+    await refreshDashboardData();
+    app.innerHTML = dashboardView();
+    bindDashboardEvents();
+  }
+  bindGlobalEvents();
+}
+
+function homeView(){
+  const chips = ['Shanghai','Dubai','Rotterdam','New York','Lagos','Singapore','Mumbai','Frankfurt'];
+  return `
+  <div class="hero">
+    <div class="wrap">
+      <span class="eyebrow">● 26 hubs · 20 countries · live</span>
+      <h1>Ship anything, from any world hub to any world hub.</h1>
+      <p>Request a quote, get priced by our team, and settle instantly in Bitcoin — with full tracking from pickup to delivery.</p>
+      <div class="hero-cta">
+        <button class="btn btn-brass" onclick="go('register')">Request a quote</button>
+        <button class="btn btn-ghost" onclick="go('track')">Track a shipment →</button>
+      </div>
+      <div class="hub-strip">${chips.map(c=>`<span class="hub-chip">${c}</span>`).join('')}</div>
+    </div>
+  </div>
+  <section class="block">
+    <div class="wrap grid-2">
+      <div>
+        <div class="section-head"><span class="tag">How it works</span><h2>From inquiry to delivery</h2></div>
+        <div class="panel" style="padding:0;">
+          ${[
+            ['01','Submit an inquiry','Tell us your cargo, origin hub and destination hub.'],
+            ['02','Receive a quote','Our team prices the route and gets back to you.'],
+            ['03','Pay in Bitcoin','Scan the QR, send BTC, we confirm on-chain.'],
+            ['04','Track to delivery','Follow your shipment hub by hub with a tracking code.']
+          ].map(([n,t,d],i,arr)=>`
+            <div style="padding:18px 22px;${i<arr.length-1?'border-bottom:1px solid var(--line);':''}display:flex;gap:16px;align-items:flex-start;">
+              <span class="mono" style="color:var(--brass-dark);font-weight:600;font-size:13px;padding-top:2px;">${n}</span>
+              <div><div style="font-weight:700;font-size:15px;">${t}</div><div class="muted">${d}</div></div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="section-head"><span class="tag">Track now</span><h2>Have a tracking code?</h2></div>
+        <div class="panel">
+          <p class="muted" style="margin-top:0;">No account needed — every shipment has a public tracking code like <span class="mono">TF-2026-XXXXXX</span>.</p>
+          <label>Tracking code</label>
+          <input id="homeTrackInput" placeholder="TF-2026-XXXXXX">
+          <button class="btn btn-brass" style="width:100%;margin-top:14px;" onclick="quickTrack()">Track shipment</button>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+window.quickTrack = function(){
+  const v = document.getElementById('homeTrackInput').value.trim();
+  go('track');
+  if(v){ setTimeout(()=>{ const el=document.getElementById('trackInput'); if(el){el.value=v; doTrack();} }, 30); }
+};
+
+function authView(mode){
+  return `
+  <section class="block">
+    <div class="wrap" style="max-width:440px;">
+      <div class="section-head"><span class="tag">${mode==='login'?'Welcome back':'Create your account'}</span>
+      <h2>${mode==='login'?'Sign in to TrackFlow':'Get a quote in minutes'}</h2></div>
+      <div class="panel">
+        <form id="authForm">
+          ${mode==='register'?`
+            <label>Full name</label><input name="name" required>
+            <label>Phone</label><input name="phone" placeholder="+234...">
+          `:''}
+          <label>Email</label><input name="email" type="email" required>
+          <label>Password</label><input name="password" type="password" required minlength="6">
+          <button class="btn btn-brass" type="submit" style="width:100%;margin-top:20px;">
+            ${mode==='login'?'Sign in':'Create account'}
+          </button>
+        </form>
+        <div id="authMsg"></div>
+        <p class="hint" style="text-align:center;margin-top:16px;">
+          ${mode==='login'
+            ? `New here? <a href="#" onclick="go('register');return false;" style="color:var(--brass-dark);font-weight:600;">Create an account</a>`
+            : `Already have an account? <a href="#" onclick="go('login');return false;" style="color:var(--brass-dark);font-weight:600;">Sign in</a>`}
+        </p>
+      </div>
+    </div>
+  </section>`;
+}
+
+function trackView(){
+  const r = state.trackResult;
+  return `
+  <section class="block">
+    <div class="wrap" style="max-width:640px;">
+      <div class="section-head"><span class="tag">Public tracking</span><h2>Track your shipment</h2></div>
+      <div class="panel">
+        <label>Tracking code</label>
+        <div style="display:flex;gap:10px;">
+          <input id="trackInput" placeholder="TF-2026-XXXXXX" style="flex:1;">
+          <button class="btn btn-brass" id="trackBtn" onclick="doTrack()">Track</button>
+        </div>
+        ${state.trackError ? `<div class="err">${state.trackError}</div>` : ''}
+        ${r ? `
+          <div style="margin-top:24px;">
+            <div class="card-top">
+              <div>
+                <div class="mono" style="font-weight:700;font-size:16px;">${r.shipment.tracking_code}</div>
+                <div class="route">${r.shipment.origin_country} → ${r.shipment.destination_country}</div>
+              </div>
+              <span class="status-pill st-${r.shipment.status}">${statusLabel(r.shipment.status)}</span>
+            </div>
+            <p class="muted" style="margin:10px 0 0;">Current location: <b style="color:var(--text);">${r.shipment.current_location || '—'}</b></p>
+            <div class="timeline">
+              <div class="tl-item">
+                <div class="tl-status">Shipment created</div>
+                <div class="tl-loc">${r.shipment.origin_country}</div>
+                <div class="tl-time">${fmtDate(r.shipment.created_at)}</div>
+              </div>
+              ${r.events.map(e=>`
+                <div class="tl-item">
+                  <div class="tl-status">${statusLabel(e.status)}</div>
+                  <div class="tl-loc">${[e.warehouse_name,e.city,e.country].filter(Boolean).join(', ') || '—'}</div>
+                  <div class="tl-time">${fmtDate(e.created_at)}</div>
+                </div>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  </section>`;
+}
+window.doTrack = async function(){
+  const code = document.getElementById('trackInput').value.trim();
+  state.trackError = null; state.trackResult = null;
+  if(!code){ state.trackError = 'Enter a tracking code.'; render(); return; }
+  const btn = document.getElementById('trackBtn');
+  btn.innerHTML = '<span class="spin"></span>'; btn.disabled = true;
+  try{
+    state.trackResult = await api('/shipments/track/' + encodeURIComponent(code));
+  }catch(e){
+    state.trackError = e.message;
+  }
+  render();
+};
+
+async function refreshDashboardData(){
+  try{
+    const [inq, ship] = await Promise.all([api('/inquiries/mine'), api('/shipments/mine')]);
+    state.inquiries = inq; state.shipments = ship;
+  }catch(e){
+    if(e.status===401){ clearAuth(); state.view='login'; }
+  }
+}
+
+function dashboardView(){
+  return `
+  <section class="block">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag">Welcome back</span>
+        <h2>${state.user.name || state.user.email}</h2>
+      </div>
+      <div class="tabs">
+        <div class="tab ${state.dashTab==='quote'?'active':''}" onclick="setDashTab('quote')">Request a quote</div>
+        <div class="tab ${state.dashTab==='inquiries'?'active':''}" onclick="setDashTab('inquiries')">My inquiries (${state.inquiries.length})</div>
+        <div class="tab ${state.dashTab==='shipments'?'active':''}" onclick="setDashTab('shipments')">My shipments (${state.shipments.length})</div>
+      </div>
+      <div id="dashContent">${dashTabContent()}</div>
+    </div>
+  </section>`;
+}
+
+function dashTabContent(){
+  if(state.dashTab==='quote') return quoteFormHtml();
+  if(state.dashTab==='inquiries') return inquiriesListHtml();
+  if(state.dashTab==='shipments') return shipmentsListHtml();
+}
+
+function quoteFormHtml(){
+  return `
+  <div class="panel" style="max-width:600px;">
+    <form id="inquiryForm">
+      <label>Cargo description</label>
+      <textarea name="cargo_description" required placeholder="e.g. Consumer electronics, palletized, 1500kg"></textarea>
+      <label>Weight (kg)</label>
+      <input name="weight_kg" type="number" step="0.1" min="0">
+      <label>Origin hub</label>
+      <select name="origin_hub_code" required><option value="" disabled selected>Select origin hub</option>${hubOptions()}</select>
+      <label>Destination hub</label>
+      <select name="destination_hub_code" required><option value="" disabled selected>Select destination hub</option>${hubOptions()}</select>
+      <button class="btn btn-brass" type="submit" style="width:100%;margin-top:20px;">Submit inquiry</button>
+    </form>
+    <div id="inquiryMsg"></div>
+  </div>`;
+}
+
+function inquiriesListHtml(){
+  if(!state.inquiries.length) return `<div class="panel empty"><div class="glyph">📋</div>No inquiries yet. Request a quote to get started.</div>`;
+  return state.inquiries.map(i => `
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <div style="font-weight:700;">${i.cargo_description}</div>
+          <div class="route">${i.origin_city || i.origin_country} → ${i.destination_city || i.destination_country}${i.weight_kg?` · ${i.weight_kg}kg`:''}</div>
+        </div>
+        <span class="status-pill st-${i.status}">${statusLabel(i.status)}</span>
+      </div>
+      ${i.status==='quoted' ? `
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:700;font-size:17px;">$${Number(i.quote_cost_usd).toLocaleString()}</div>
+            ${i.quote_note?`<div class="muted">${i.quote_note}</div>`:''}
+          </div>
+          <span class="muted mono" style="font-size:12px;">Awaiting shipment creation</span>
+        </div>` : ''}
+      <div class="muted" style="margin-top:10px;font-size:12px;">Submitted ${fmtDate(i.created_at)}</div>
+    </div>`).join('');
+}
+
+function shipmentsListHtml(){
+  if(!state.shipments.length) return `<div class="panel empty"><div class="glyph">📦</div>No shipments yet. They appear here once a quoted inquiry is converted.</div>`;
+  return state.shipments.map(s => `
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <div class="mono" style="font-weight:700;">${s.tracking_code}</div>
+          <div class="route">${s.origin_country} → ${s.destination_country}</div>
+        </div>
+        <span class="status-pill st-${s.status}">${statusLabel(s.status)}</span>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-weight:700;">$${Number(s.cost_usd).toLocaleString()}</div>
+          <div class="pay-${s.payment_status}" style="font-size:12.5px;font-weight:600;">${statusLabel(s.payment_status)}</div>
+        </div>
+        ${s.payment_status==='unpaid' ? `<button class="btn btn-brass" onclick="openPay(${s.id})">Pay with Bitcoin</button>` : ''}
+        ${s.payment_status==='pending_confirmation' ? `<span class="muted" style="font-size:12.5px;">Waiting on-chain confirmation</span>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+window.setDashTab = function(tab){
+  state.dashTab = tab;
+  document.getElementById('dashContent').innerHTML = dashTabContent();
+  bindDashboardEvents();
+};
+
+function bindDashboardEvents(){
+  const f = document.getElementById('inquiryForm');
+  if(f) f.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(f);
+    const oSel = f.querySelector('[name=origin_hub_code]');
+    const dSel = f.querySelector('[name=destination_hub_code]');
+    const oOpt = oSel.selectedOptions[0], dOpt = dSel.selectedOptions[0];
+    const payload = {
+      cargo_description: fd.get('cargo_description'),
+      weight_kg: fd.get('weight_kg') || null,
+      origin_hub_code: fd.get('origin_hub_code'),
+      origin_city: oOpt ? oOpt.dataset.city : null,
+      origin_country: oOpt ? oOpt.dataset.country : null,
+      destination_hub_code: fd.get('destination_hub_code'),
+      destination_city: dOpt ? dOpt.dataset.city : null,
+      destination_country: dOpt ? dOpt.dataset.country : null,
+    };
+    const msg = document.getElementById('inquiryMsg');
+    msg.innerHTML = '';
+    const btn = f.querySelector('button[type=submit]');
+    btn.innerHTML = '<span class="spin"></span>Submitting…'; btn.disabled = true;
+    try{
+      await api('/inquiries', {method:'POST', body: JSON.stringify(payload)});
+      msg.innerHTML = "<div class=\"ok\">Inquiry submitted. We'll get back to you with a quote shortly.</div>";
+      f.reset();
+      await refreshDashboardData();
+      setTimeout(()=> setDashTab('inquiries'), 900);
+    }catch(err){
+      msg.innerHTML = `<div class="err">${err.message}</div>`;
+      btn.innerHTML = 'Submit inquiry'; btn.disabled = false;
+    }
+  });
+}
+
+window.openPay = async function(shipmentId){
+  showModal(`<div style="text-align:center;padding:30px 0;"><span class="spin" style="border-color:rgba(16,25,43,0.2);border-top-color:var(--ink);"></span> Generating payment…</div>`);
+  try{
+    const p = await api('/payments/bitcoin/create', {method:'POST', body: JSON.stringify({shipmentId})});
+    showModal(`
+      <button class="close" onclick="closeModal()">&times;</button>
+      <h3>Pay with Bitcoin</h3>
+      <p class="muted" style="margin-top:0;">Shipment <span class="mono">${p.trackingCode}</span></p>
+      <div class="qr-wrap"><img src="${p.qrCode}" alt="BTC payment QR"></div>
+      <div class="kv"><span>Amount (USD)</span><b>$${Number(p.amountUSD).toLocaleString()}</b></div>
+      <div class="kv"><span>Amount (BTC)</span><b>${p.btcAmount}</b></div>
+      <div class="kv"><span>BTC price</span><b>$${Number(p.btcPrice).toLocaleString()}</b></div>
+      <label>Send to this address</label>
+      <div class="addr-box">${p.btcAddress}</div>
+      <label style="margin-top:18px;">Transaction hash <span class="muted" style="font-weight:400;">(optional, speeds up confirmation)</span></label>
+      <input id="txHashInput" placeholder="e.g. 0x...">
+      <button class="btn btn-brass" style="width:100%;margin-top:16px;" onclick="submitProof(${p.shipmentId})">I've sent the payment</button>
+      <p class="hint">Once sent, our admin team verifies it on-chain using a one-time code before confirming your payment.</p>
+      <div id="payMsg"></div>
+    `);
+  }catch(e){
+    showModal(`<button class="close" onclick="closeModal()">&times;</button><h3>Couldn't start payment</h3><div class="err">${e.message}</div>`);
+  }
+};
+window.submitProof = async function(shipmentId){
+  const txHash = document.getElementById('txHashInput').value.trim();
+  const msg = document.getElementById('payMsg');
+  try{
+    const r = await api('/payments/bitcoin/confirm', {method:'POST', body: JSON.stringify({shipmentId, txHash})});
+    msg.innerHTML = `<div class="ok">${r.message}</div>`;
+    await refreshDashboardData();
+    setTimeout(()=>{ closeModal(); setDashTab('shipments'); }, 1800);
+  }catch(e){
+    msg.innerHTML = `<div class="err">${e.message}</div>`;
+  }
+};
+
+function showModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalBg').classList.add('show');
+}
+window.closeModal = function(){ document.getElementById('modalBg').classList.remove('show'); };
+
+function bindGlobalEvents(){
+  const f = document.getElementById('authForm');
+  if(f) f.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(f);
+    const mode = state.view;
+    const payload = mode==='register'
+      ? {name:fd.get('name'), phone:fd.get('phone'), email:fd.get('email'), password:fd.get('password')}
+      : {email:fd.get('email'), password:fd.get('password')};
+    const msg = document.getElementById('authMsg');
+    msg.innerHTML = '';
+    const btn = f.querySelector('button[type=submit]');
+    const origText = btn.innerHTML;
+    btn.innerHTML = '<span class="spin" style="border-color:rgba(16,25,43,0.3);border-top-color:var(--ink);"></span>Please wait…'; btn.disabled = true;
+    try{
+      const data = await api('/auth/' + mode, {method:'POST', body: JSON.stringify(payload)});
+      saveAuth(data.token, data.user);
+      go('dashboard');
+    }catch(err){
+      msg.innerHTML = `<div class="err">${err.message}</div>`;
+      btn.innerHTML = origText; btn.disabled = false;
+    }
+  });
+  const trackInput = document.getElementById('trackInput');
+  if(trackInput) trackInput.addEventListener('keydown', e=>{ if(e.key==='Enter') doTrack(); });
+}
+
+document.getElementById('modalBg').addEventListener('click', (e)=>{
+  if(e.target.id==='modalBg') closeModal();
+});
+
+if(state.token && state.user) state.view = 'dashboard';
+render();
+</script>
+</body>
+</html>
