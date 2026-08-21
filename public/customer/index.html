@@ -317,7 +317,7 @@ function authView(mode){
         <form id="authForm">
           ${mode==='register'?`
             <label>Full name</label><input name="name" required>
-            <label>Phone</label><input name="phone" placeholder="+234...">
+            <label>Phone</label><input name="phone" placeholder="+">
           `:''}
           <label>Email</label><input name="email" type="email" required>
           <label>Password</label><input name="password" type="password" required minlength="6">
