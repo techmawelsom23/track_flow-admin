@@ -10,29 +10,40 @@ function currentConfigKey() {
 }
 
 function getTransporter() {
-  if (!process.env.SMTP_HOST || !process.env.ADMIN_GMAIL || !process.env.GMAIL_APP_PASSWORD) {
+  if (!process.env.SMTP_HOST ||!process.env.ADMIN_GMAIL ||!process.env.GMAIL_APP_PASSWORD) {
     transporter = null;
     return null;
   }
-  // Rebuild if config changed (e.g. env vars updated without a full restart in some setups)
   const key = currentConfigKey();
   if (transporter && transporterConfigKey === key) return transporter;
 
   const port = Number(process.env.SMTP_PORT) || 587;
+  const isSecure = port === 465; // FIXED: 465=true, 587=false
+
   transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port,
-    secure: port === 587, // 465 = implicit TLS, 587 = STARTTLS. Mixing these up is a common cause of silent auth/connection failures.
-    auth: { user: process.env.ADMIN_GMAIL, pass: process.env.GMAIL_APP_PASSWORD }
+    secure: isSecure,
+    auth: {
+      user: process.env.ADMIN_GMAIL,
+      pass: process.env.GMAIL_APP_PASSWORD.replace(/\s/g, '') // removes spaces from App Password
+    },
+    // --- RENDER FIX ---
+    family: 4, // force IPv4, stops ETIMEDOUT on Render
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000,
+    requireTLS:!isSecure, // true for 587
+    tls: {
+      rejectUnauthorized: true,
+      ciphers: 'SSLv3'
+    }
   });
   transporterConfigKey = key;
   return transporter;
 }
 
 function describeError(e) {
-  // Nodemailer/SMTP errors carry much more useful detail than e.message alone —
-  // surfacing these is the difference between "email failed" and actually
-  // knowing whether it's bad credentials, a blocked port, or a typo'd host.
   const parts = [e.message];
   if (e.code) parts.push(`code=${e.code}`);
   if (e.responseCode) parts.push(`smtpCode=${e.responseCode}`);
@@ -62,15 +73,10 @@ async function send(to, subject, html) {
   }
 }
 
-// Call at server startup to prove SMTP credentials actually work, instead of
-// finding out only when a real customer submits a real payment. Logs a clear
-// pass/fail with the exact SMTP error so a bad Gmail App Password, wrong
-// port/secure combination, or missing 2FA shows up immediately in the boot
-// logs rather than as silent, unexplained missing emails days later.
 export async function verifyEmailConfig() {
   const t = getTransporter();
   if (!t) {
-    console.warn('[email] SMTP not configured — SMTP_HOST/ADMIN_GMAIL/GMAIL_APP_PASSWORD missing. Notifications and payment OTPs will not be sent until these are set in Render → Environment.');
+    console.warn('[email] SMTP not configured — SMTP_HOST/ADMIN_GMAIL/GMAIL_APP_PASSWORD missing.');
     return false;
   }
   try {
@@ -97,14 +103,13 @@ function wrap(title, bodyHtml) {
   </div>`;
 }
 
-// Admin notification: a new inquiry came in
 export async function sendNewInquiryEmail(inquiry, customer) {
   const to = process.env.ADMIN_GMAIL || process.env.ADMIN_EMAIL;
   const html = wrap('New shipping inquiry', `
     <p><b>${customer.name || customer.email}</b> (${customer.email}) submitted a new inquiry.</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
       <tr><td style="padding:6px 0;color:#5C6B82;">Cargo</td><td style="padding:6px 0;">${inquiry.cargo_description}</td></tr>
-      <tr><td style="padding:6px 0;color:#5C6B82;">Weight</td><td style="padding:6px 0;">${inquiry.weight_kg ? inquiry.weight_kg + ' kg' : '—'}</td></tr>
+      <tr><td style="padding:6px 0;color:#5C6B82;">Weight</td><td style="padding:6px 0;">${inquiry.weight_kg? inquiry.weight_kg + ' kg' : '—'}</td></tr>
       <tr><td style="padding:6px 0;color:#5C6B82;">Route</td><td style="padding:6px 0;">${inquiry.origin_city || inquiry.origin_country} → ${inquiry.destination_city || inquiry.destination_country}</td></tr>
     </table>
     <p style="margin-top:16px;">Sign in to the admin console to send a quote.</p>
@@ -112,7 +117,6 @@ export async function sendNewInquiryEmail(inquiry, customer) {
   return await send(to, `New inquiry: ${inquiry.cargo_description}`, html);
 }
 
-// Customer notification: their inquiry was quoted
 export async function sendQuoteEmail(customer, inquiry) {
   const html = wrap('Your quote is ready', `
     <p>Hi ${customer.name || ''},</p>
@@ -121,14 +125,13 @@ export async function sendQuoteEmail(customer, inquiry) {
       <tr><td style="padding:6px 0;color:#5C6B82;">Cargo</td><td style="padding:6px 0;">${inquiry.cargo_description}</td></tr>
       <tr><td style="padding:6px 0;color:#5C6B82;">Route</td><td style="padding:6px 0;">${inquiry.origin_city || inquiry.origin_country} → ${inquiry.destination_city || inquiry.destination_country}</td></tr>
       <tr><td style="padding:6px 0;color:#5C6B82;">Quote</td><td style="padding:6px 0;font-weight:700;font-size:16px;">$${Number(inquiry.quote_cost_usd).toLocaleString()}</td></tr>
-      ${inquiry.quote_note ? `<tr><td style="padding:6px 0;color:#5C6B82;">Note</td><td style="padding:6px 0;">${inquiry.quote_note}</td></tr>` : ''}
+      ${inquiry.quote_note? `<tr><td style="padding:6px 0;color:#5C6B82;">Note</td><td style="padding:6px 0;">${inquiry.quote_note}</td></tr>` : ''}
     </table>
     <p style="margin-top:16px;">Sign in to your TrackFlow account to accept and create your shipment.</p>
   `);
   return await send(customer.email, 'Your TrackFlow quote is ready', html);
 }
 
-// Customer notification: shipment status/location changed
 export async function sendShipmentUpdateEmail(customer, shipment, status, location) {
   const html = wrap('Shipment update', `
     <p>Hi ${customer.name || ''},</p>
@@ -142,8 +145,6 @@ export async function sendShipmentUpdateEmail(customer, shipment, status, locati
   return await send(customer.email, `Shipment ${shipment.tracking_code}: ${status.replace(/_/g,' ')}`, html);
 }
 
-// Admin: on-demand test email so config problems can be diagnosed instantly
-// from the console rather than waiting for a real customer payment.
 export async function sendTestEmail(toEmail) {
   const html = wrap('Test email', `
     <p>This is a test email from TrackFlow, sent at ${new Date().toISOString()}.</p>
@@ -151,6 +152,7 @@ export async function sendTestEmail(toEmail) {
   `);
   return await send(toEmail, 'TrackFlow test email', html);
 }
+
 export async function sendPaymentOtpEmail(shipment, customer, otp) {
   const to = process.env.ADMIN_GMAIL || process.env.ADMIN_EMAIL;
   const html = wrap('Payment verification code', `
