@@ -22,7 +22,7 @@ function getTransporter() {
   transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port,
-    secure: port === 465, // 465 = implicit TLS, 587 = STARTTLS. Mixing these up is a common cause of silent auth/connection failures.
+    secure: port === 587, // 465 = implicit TLS, 587 = STARTTLS. Mixing these up is a common cause of silent auth/connection failures.
     auth: { user: process.env.ADMIN_GMAIL, pass: process.env.GMAIL_APP_PASSWORD }
   });
   transporterConfigKey = key;
