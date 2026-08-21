@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { pool } from '../db.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 import { sendPaymentOtpEmail } from '../services/email.js';
+import { ah } from '../utils/asyncHandler.js';
 
 const router = express.Router();
 const OTP_TTL_MINUTES = 10;
@@ -77,14 +78,14 @@ async function issueOtp(shipmentId) {
   return otp;
 }
 
-router.get('/bitcoin/price', async (req, res) => {
+router.get('/bitcoin/price', ah(async (req, res) => {
   const btc_usd = await getBtcPrice();
   if (!btc_usd) return res.status(502).json({ error: 'Could not fetch live BTC price, try again shortly' });
   res.json({ btc_usd });
-});
+}));
 
 // Amount is derived from the shipment's cost_usd in the DB — never trust a client-supplied amount.
-router.post('/bitcoin/create', authMiddleware, async (req, res) => {
+router.post('/bitcoin/create', authMiddleware, ah(async (req, res) => {
   const { shipmentId } = req.body;
   if (!shipmentId) return res.status(400).json({ error: 'shipmentId is required' });
 
@@ -110,14 +111,14 @@ router.post('/bitcoin/create', authMiddleware, async (req, res) => {
     trackingCode: s.rows[0].tracking_code,
     btcAddress, btcAmount, amountUSD, btcPrice, bitcoinUri, qrCode
   });
-});
+}));
 
 // Customer submits proof of payment (tx hash). This puts the shipment into
 // pending_confirmation AND emails a one-time verification code to the admin
 // inbox — the admin must read that code from their own email and enter it
 // in the console before the payment can be marked paid. This means a single
 // admin-panel click is never enough to release a shipment as paid.
-router.post('/bitcoin/confirm', authMiddleware, async (req, res) => {
+router.post('/bitcoin/confirm', authMiddleware, ah(async (req, res) => {
   const { shipmentId, txHash } = req.body;
   if (!shipmentId) return res.status(400).json({ error: 'shipmentId is required' });
 
@@ -130,17 +131,24 @@ router.post('/bitcoin/confirm', authMiddleware, async (req, res) => {
 
   const otp = await issueOtp(shipmentId);
   const customer = await pool.query('SELECT email, name FROM users WHERE id=$1', [req.user.id]);
-  await sendPaymentOtpEmail(s.rows[0], customer.rows[0], otp);
+  const emailResult = await sendPaymentOtpEmail(s.rows[0], customer.rows[0], otp);
+
+  if (!emailResult.sent) {
+    console.error(`[payments] Payment submitted for shipment ${shipmentId} but the admin OTP email did NOT send (${emailResult.reason}). OTP is still valid: check the payment_otps table if needed.`);
+  }
 
   res.json({
     ok: true,
     status: 'pending_confirmation',
-    message: 'Payment submitted. We\'ve sent a verification code to our admin team — they\'ll confirm shortly once it\'s verified on-chain.'
+    emailSent: emailResult.sent,
+    message: emailResult.sent
+      ? 'Payment submitted. We\'ve sent a verification code to our admin team — they\'ll confirm shortly once it\'s verified on-chain.'
+      : 'Payment submitted and is awaiting admin confirmation. (Note: our verification email could not be sent — the team has been notified via server logs.)'
   });
-});
+}));
 
 // Admin: resend/regenerate the OTP for a shipment (e.g. it expired or the email got lost)
-router.post('/bitcoin/resend-otp', authMiddleware, adminOnly, async (req, res) => {
+router.post('/bitcoin/resend-otp', authMiddleware, adminOnly, ah(async (req, res) => {
   const { shipmentId } = req.body;
   if (!shipmentId) return res.status(400).json({ error: 'shipmentId is required' });
 
@@ -152,14 +160,18 @@ router.post('/bitcoin/resend-otp', authMiddleware, adminOnly, async (req, res) =
   if (!s.rows[0]) return res.status(404).json({ error: 'Shipment not found' });
 
   const otp = await issueOtp(shipmentId);
-  await sendPaymentOtpEmail(s.rows[0], { email: s.rows[0].customer_email, name: s.rows[0].customer_name }, otp);
-  res.json({ ok: true, message: 'A new code has been sent to the admin inbox.' });
-});
+  const emailResult = await sendPaymentOtpEmail(s.rows[0], { email: s.rows[0].customer_email, name: s.rows[0].customer_name }, otp);
+  res.json({
+    ok: true,
+    emailSent: emailResult.sent,
+    message: emailResult.sent ? 'A new code has been sent to the admin inbox.' : `Code generated but the email failed to send (${emailResult.reason}). Check server logs or the payment_otps table.`
+  });
+}));
 
 // Admin verifies the BTC actually landed in the wallet, then enters the OTP
 // from their email to confirm payment. This is the only way payment_status
 // can become 'paid' — there is no direct "just mark it paid" button.
-router.post('/bitcoin/verify-otp', authMiddleware, adminOnly, async (req, res) => {
+router.post('/bitcoin/verify-otp', authMiddleware, adminOnly, ah(async (req, res) => {
   const { shipmentId, otp } = req.body;
   if (!shipmentId || !otp) return res.status(400).json({ error: 'shipmentId and otp are required' });
 
@@ -174,6 +186,6 @@ router.post('/bitcoin/verify-otp', authMiddleware, adminOnly, async (req, res) =
   await pool.query('UPDATE payment_otps SET used_at=NOW() WHERE id=$1', [rec.rows[0].id]);
   const r = await pool.query(`UPDATE shipments SET payment_status='paid' WHERE id=$1 RETURNING *`, [shipmentId]);
   res.json(r.rows[0]);
-});
+}));
 
 export default router;

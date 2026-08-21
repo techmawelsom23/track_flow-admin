@@ -45,6 +45,16 @@ Gmail address, and `GMAIL_APP_PASSWORD` to a 16-character **App Password** (not 
 Gmail password — generate one at https://myaccount.google.com/apppasswords, requires 2FA
 enabled on the account).
 
+**Diagnosing email problems:** on every boot, the server verifies the SMTP connection and
+logs a clear pass/fail with the exact error to Render's logs — check there first if emails
+aren't arriving. There's also a **Test email delivery** button at the top of the admin
+console that sends a real test email on demand and shows the exact error in the UI (e.g.
+Gmail's real `535-5.7.8 Username and Password not accepted` if the App Password is wrong).
+Most delivery failures come down to one of: using a regular Gmail password instead of an
+App Password, 2FA not being enabled (which blocks App Password generation entirely), a
+typo in `ADMIN_GMAIL`, or the email actually landing in Spam on first send from a new
+sending account — worth checking there too.
+
 ## Bitcoin payment verification (OTP)
 
 Payments are never marked "paid" by a single admin click. The flow is:

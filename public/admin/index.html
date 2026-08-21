@@ -109,6 +109,9 @@
   .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.25);border-top-color:#1A1305;border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:-2px;margin-right:6px;}
   @keyframes sp{to{transform:rotate(360deg);}}
   .hidden{display:none !important;}
+  .live-indicator{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono';font-size:11.5px;color:var(--slate);text-transform:uppercase;letter-spacing:0.05em;transition:opacity 0.3s;}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--forest);box-shadow:0 0 0 0 rgba(79,190,142,0.5);animation:livepulse 2s infinite;}
+  @keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(79,190,142,0.45);}70%{box-shadow:0 0 0 6px rgba(79,190,142,0);}100%{box-shadow:0 0 0 0 rgba(79,190,142,0);}}
   table.wh{width:100%;border-collapse:collapse;font-size:13px;}
   table.wh th{text-align:left;color:var(--slate);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;}
   table.wh td{padding:9px 10px;border-bottom:1px solid var(--line);}
@@ -187,6 +190,7 @@ async function render(){
   if(!state.token || state.view==='login'){ app.innerHTML = loginView(); bindLogin(); return; }
   app.innerHTML = `<div class="wrap block"><p class="muted">Loading console…</p></div>`;
   await Promise.all([loadStats(), loadInquiries(), loadShipments(), loadWarehouses()]);
+  if(state.view !== 'console'){ return render(); } // session expired mid-load (401) — loadStats already switched us to login
   app.innerHTML = consoleView();
 }
 
@@ -233,9 +237,10 @@ function bindLogin(){
   });
 }
 
-async function loadStats(){ try{ state.stats = await api('/admin/stats'); }catch(e){ if(e.status===401){clearAuth(); state.view='login';} } }
-async function loadInquiries(){ try{ state.inquiries = await api('/inquiries'); }catch(e){} }
-async function loadShipments(){ try{ state.shipments = await api('/shipments'); }catch(e){} }
+function handleAuthError(e){ if(e.status===401){ clearAuth(); state.view='login'; } }
+async function loadStats(){ try{ state.stats = await api('/admin/stats'); }catch(e){ handleAuthError(e); } }
+async function loadInquiries(){ try{ state.inquiries = await api('/inquiries'); }catch(e){ handleAuthError(e); } }
+async function loadShipments(){ try{ state.shipments = await api('/shipments'); }catch(e){ handleAuthError(e); } }
 async function loadWarehouses(){ if(!state.warehouses.length) try{ state.warehouses = await api('/admin/warehouses'); }catch(e){} }
 
 function consoleView(){
@@ -243,15 +248,20 @@ function consoleView(){
   return `
   <section class="block">
     <div class="wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <button class="btn btn-ghost btn-sm" onclick="runTestEmail()">Test email delivery</button>
+        <span class="live-indicator" id="liveIndicator"><span class="live-dot"></span>Live</span>
+      </div>
+      <div id="testEmailMsg"></div>
       <div class="stat-grid">
-        <div class="stat-card"><div class="n">${s.totalInquiries}</div><div class="l">Total inquiries</div></div>
-        <div class="stat-card"><div class="n">${s.pendingInquiries}</div><div class="l">Pending review</div></div>
-        <div class="stat-card"><div class="n">${s.totalShipments}</div><div class="l">Shipments created</div></div>
-        <div class="stat-card"><div class="n">$${Number(s.totalPaidUSD).toLocaleString()}</div><div class="l">Confirmed revenue (BTC)</div></div>
+        <div class="stat-card"><div class="n" id="stat-totalInquiries">${s.totalInquiries}</div><div class="l">Total inquiries</div></div>
+        <div class="stat-card"><div class="n" id="stat-pendingInquiries">${s.pendingInquiries}</div><div class="l">Pending review</div></div>
+        <div class="stat-card"><div class="n" id="stat-totalShipments">${s.totalShipments}</div><div class="l">Shipments created</div></div>
+        <div class="stat-card"><div class="n" id="stat-totalPaidUSD">$${Number(s.totalPaidUSD).toLocaleString()}</div><div class="l">Confirmed revenue (BTC)</div></div>
       </div>
       <div class="tabs">
-        <div class="tab ${state.tab==='inquiries'?'active':''}" onclick="setTab('inquiries')">Inquiries (${state.inquiries.length})</div>
-        <div class="tab ${state.tab==='shipments'?'active':''}" onclick="setTab('shipments')">Shipments (${state.shipments.length})</div>
+        <div class="tab ${state.tab==='inquiries'?'active':''}" onclick="setTab('inquiries')">Inquiries (<span id="cnt-inquiries">${state.inquiries.length}</span>)</div>
+        <div class="tab ${state.tab==='shipments'?'active':''}" onclick="setTab('shipments')">Shipments (<span id="cnt-shipments">${state.shipments.length}</span>)</div>
         <div class="tab ${state.tab==='warehouses'?'active':''}" onclick="setTab('warehouses')">World hubs (${state.warehouses.length})</div>
       </div>
       <div id="tabContent">${tabContent()}</div>
@@ -455,12 +465,63 @@ window.resendOtp = async function(shipmentId){
   }catch(e){ msg.innerHTML = `<div class="err">${e.message}</div>`; }
 };
 
+window.runTestEmail = async function(){
+  const msg = document.getElementById('testEmailMsg');
+  msg.innerHTML = '<div class="muted" style="margin-bottom:10px;"><span class="spin" style="border-color:rgba(255,255,255,0.25);border-top-color:var(--brass);"></span>Sending test email…</div>';
+  try{
+    const r = await api('/admin/test-email', {method:'POST'});
+    msg.innerHTML = `<div class="ok" style="margin-bottom:10px;">${r.message}</div>`;
+  }catch(e){
+    msg.innerHTML = `<div class="err" style="margin-bottom:10px;">${e.message}</div>`;
+  }
+};
+
 function showModal(html){
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('modalBg').classList.add('show');
 }
 window.closeModal = function(){ document.getElementById('modalBg').classList.remove('show'); };
 document.getElementById('modalBg').addEventListener('click', (e)=>{ if(e.target.id==='modalBg') closeModal(); });
+
+// ---------- LIVE REFRESH (no manual reload needed) ----------
+// One persistent interval for the whole page lifetime. All three admin tabs
+// (inquiries, shipments, warehouses) are read-only lists/tables with no
+// persistent form fields to disturb, so it's safe to just re-render the
+// visible tab content on every tick. Any open modal lives in its own DOM
+// tree (#modalBody) and is untouched by this.
+const POLL_INTERVAL_MS = 10000;
+
+function flashLiveIndicator(){
+  const el = document.getElementById('liveIndicator');
+  if(!el) return;
+  el.style.opacity = '0.35';
+  setTimeout(()=>{ el.style.opacity = '1'; }, 300);
+}
+
+async function backgroundRefresh(){
+  if(state.view !== 'console' || !state.token) return;
+  try{
+    await Promise.all([loadStats(), loadInquiries(), loadShipments()]);
+  }catch(e){ return; }
+  if(state.view !== 'console'){ render(); return; } // session expired mid-refresh
+
+  const s = state.stats || {totalInquiries:0,pendingInquiries:0,totalShipments:0,totalPaidUSD:0};
+  const setText = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  setText('stat-totalInquiries', s.totalInquiries);
+  setText('stat-pendingInquiries', s.pendingInquiries);
+  setText('stat-totalShipments', s.totalShipments);
+  setText('stat-totalPaidUSD', '$' + Number(s.totalPaidUSD).toLocaleString());
+  setText('cnt-inquiries', state.inquiries.length);
+  setText('cnt-shipments', state.shipments.length);
+
+  const tc = document.getElementById('tabContent');
+  if(tc) tc.innerHTML = tabContent();
+  flashLiveIndicator();
+}
+
+setInterval(backgroundRefresh, POLL_INTERVAL_MS);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) backgroundRefresh(); });
+window.addEventListener('focus', backgroundRefresh);
 
 if(state.token && state.user) state.view = 'console';
 render();

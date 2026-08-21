@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDb } from './db.js';
+import { verifyEmailConfig } from './services/email.js';
 import authRoutes from './routes/auth.js';
 import inquiryRoutes from './routes/inquiries.js';
 import shipmentRoutes from './routes/shipments.js';
@@ -64,6 +65,7 @@ async function start() {
       process.exit(1);
     }
     await initDb();
+    await verifyEmailConfig();
     app.listen(PORT, () => console.log(`TrackFlow running on port ${PORT} — /customer/ and /admin/ ready`));
   } catch (e) {
     console.error('FATAL: could not start server —', e.message);

@@ -136,6 +136,9 @@
   .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:-2px;margin-right:6px;}
   @keyframes sp{to{transform:rotate(360deg);}}
   .hidden{display:none !important;}
+  .live-indicator{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono';font-size:11.5px;color:var(--slate);text-transform:uppercase;letter-spacing:0.05em;transition:opacity 0.3s;}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--forest);box-shadow:0 0 0 0 rgba(31,110,79,0.5);animation:livepulse 2s infinite;}
+  @keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(31,110,79,0.45);}70%{box-shadow:0 0 0 6px rgba(31,110,79,0);}100%{box-shadow:0 0 0 0 rgba(31,110,79,0);}}
 </style>
 </head>
 <body>
@@ -247,6 +250,7 @@ async function render(){
     app.innerHTML = `<div class="wrap block"><div class="panel"><p class="muted">Loading your dashboard…</p></div></div>`;
     await loadWarehouses();
     await refreshDashboardData();
+    if(state.view !== 'dashboard'){ return render(); } // session expired mid-load (401) — refreshDashboardData already switched us to login
     app.innerHTML = dashboardView();
     bindDashboardEvents();
   }
@@ -333,46 +337,53 @@ function authView(mode){
 }
 
 function trackView(){
-  const r = state.trackResult;
   return `
   <section class="block">
     <div class="wrap" style="max-width:640px;">
-      <div class="section-head"><span class="tag">Public tracking</span><h2>Track your shipment</h2></div>
+      <div class="section-head" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;">
+        <div><span class="tag">Public tracking</span><h2>Track your shipment</h2></div>
+        ${state.trackResult ? `<span class="live-indicator" id="liveIndicator"><span class="live-dot"></span>Live</span>` : ''}
+      </div>
       <div class="panel">
         <label>Tracking code</label>
         <div style="display:flex;gap:10px;">
           <input id="trackInput" placeholder="TF-2026-XXXXXX" style="flex:1;">
           <button class="btn btn-brass" id="trackBtn" onclick="doTrack()">Track</button>
         </div>
-        ${state.trackError ? `<div class="err">${state.trackError}</div>` : ''}
-        ${r ? `
-          <div style="margin-top:24px;">
-            <div class="card-top">
-              <div>
-                <div class="mono" style="font-weight:700;font-size:16px;">${r.shipment.tracking_code}</div>
-                <div class="route">${r.shipment.origin_country} → ${r.shipment.destination_country}</div>
-              </div>
-              <span class="status-pill st-${r.shipment.status}">${statusLabel(r.shipment.status)}</span>
-            </div>
-            <p class="muted" style="margin:10px 0 0;">Current location: <b style="color:var(--text);">${r.shipment.current_location || '—'}</b></p>
-            <div class="timeline">
-              <div class="tl-item">
-                <div class="tl-status">Shipment created</div>
-                <div class="tl-loc">${r.shipment.origin_country}</div>
-                <div class="tl-time">${fmtDate(r.shipment.created_at)}</div>
-              </div>
-              ${r.events.map(e=>`
-                <div class="tl-item">
-                  <div class="tl-status">${statusLabel(e.status)}</div>
-                  <div class="tl-loc">${[e.warehouse_name,e.city,e.country].filter(Boolean).join(', ') || '—'}</div>
-                  <div class="tl-time">${fmtDate(e.created_at)}</div>
-                </div>`).join('')}
-            </div>
-          </div>
-        ` : ''}
+        <div id="trackResultBox">${trackResultHtml()}</div>
       </div>
     </div>
   </section>`;
+}
+function trackResultHtml(){
+  const r = state.trackResult;
+  return `
+    ${state.trackError ? `<div class="err">${state.trackError}</div>` : ''}
+    ${r ? `
+      <div style="margin-top:24px;">
+        <div class="card-top">
+          <div>
+            <div class="mono" style="font-weight:700;font-size:16px;">${r.shipment.tracking_code}</div>
+            <div class="route">${r.shipment.origin_country} → ${r.shipment.destination_country}</div>
+          </div>
+          <span class="status-pill st-${r.shipment.status}">${statusLabel(r.shipment.status)}</span>
+        </div>
+        <p class="muted" style="margin:10px 0 0;">Current location: <b style="color:var(--text);">${r.shipment.current_location || '—'}</b></p>
+        <div class="timeline">
+          <div class="tl-item">
+            <div class="tl-status">Shipment created</div>
+            <div class="tl-loc">${r.shipment.origin_country}</div>
+            <div class="tl-time">${fmtDate(r.shipment.created_at)}</div>
+          </div>
+          ${r.events.map(e=>`
+            <div class="tl-item">
+              <div class="tl-status">${statusLabel(e.status)}</div>
+              <div class="tl-loc">${[e.warehouse_name,e.city,e.country].filter(Boolean).join(', ') || '—'}</div>
+              <div class="tl-time">${fmtDate(e.created_at)}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    ` : ''}`;
 }
 window.doTrack = async function(){
   const code = document.getElementById('trackInput').value.trim();
@@ -401,14 +412,17 @@ function dashboardView(){
   return `
   <section class="block">
     <div class="wrap">
-      <div class="section-head">
-        <span class="tag">Welcome back</span>
-        <h2>${state.user.name || state.user.email}</h2>
+      <div class="section-head" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;">
+        <div>
+          <span class="tag">Welcome back</span>
+          <h2>${state.user.name || state.user.email}</h2>
+        </div>
+        <span class="live-indicator" id="liveIndicator"><span class="live-dot"></span>Live</span>
       </div>
       <div class="tabs">
         <div class="tab ${state.dashTab==='quote'?'active':''}" onclick="setDashTab('quote')">Request a quote</div>
-        <div class="tab ${state.dashTab==='inquiries'?'active':''}" onclick="setDashTab('inquiries')">My inquiries (${state.inquiries.length})</div>
-        <div class="tab ${state.dashTab==='shipments'?'active':''}" onclick="setDashTab('shipments')">My shipments (${state.shipments.length})</div>
+        <div class="tab ${state.dashTab==='inquiries'?'active':''}" onclick="setDashTab('inquiries')">My inquiries (<span id="cnt-inquiries">${state.inquiries.length}</span>)</div>
+        <div class="tab ${state.dashTab==='shipments'?'active':''}" onclick="setDashTab('shipments')">My shipments (<span id="cnt-shipments">${state.shipments.length}</span>)</div>
       </div>
       <div id="dashContent">${dashTabContent()}</div>
     </div>
@@ -598,6 +612,50 @@ function bindGlobalEvents(){
 document.getElementById('modalBg').addEventListener('click', (e)=>{
   if(e.target.id==='modalBg') closeModal();
 });
+
+// ---------- LIVE REFRESH (no manual reload needed) ----------
+// One persistent interval for the whole page lifetime — never duplicated on
+// navigation. Each tick is a no-op unless the person is actually on a view
+// that has live data to show, and it never touches the "Request a quote"
+// form so nothing typed there is ever lost mid-refresh.
+const POLL_INTERVAL_MS = 15000;
+
+function flashLiveIndicator(){
+  const el = document.getElementById('liveIndicator');
+  if(!el) return;
+  el.style.opacity = '0.35';
+  setTimeout(()=>{ el.style.opacity = '1'; }, 300);
+}
+
+async function backgroundRefresh(){
+  if(state.view === 'dashboard' && state.token){
+    try{
+      const [inq, ship] = await Promise.all([api('/inquiries/mine'), api('/shipments/mine')]);
+      state.inquiries = inq; state.shipments = ship;
+    }catch(e){
+      if(e.status===401){ clearAuth(); render(); }
+      return;
+    }
+    const c1 = document.getElementById('cnt-inquiries'); if(c1) c1.textContent = state.inquiries.length;
+    const c2 = document.getElementById('cnt-shipments'); if(c2) c2.textContent = state.shipments.length;
+    if(state.dashTab==='inquiries' || state.dashTab==='shipments'){
+      const el = document.getElementById('dashContent');
+      if(el) el.innerHTML = dashTabContent();
+    }
+    flashLiveIndicator();
+  } else if(state.view === 'track' && state.trackResult){
+    try{
+      state.trackResult = await api('/shipments/track/' + encodeURIComponent(state.trackResult.shipment.tracking_code));
+    }catch(e){ return; }
+    const box = document.getElementById('trackResultBox');
+    if(box) box.innerHTML = trackResultHtml();
+    flashLiveIndicator();
+  }
+}
+
+setInterval(backgroundRefresh, POLL_INTERVAL_MS);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) backgroundRefresh(); });
+window.addEventListener('focus', backgroundRefresh);
 
 if(state.token && state.user) state.view = 'dashboard';
 render();
